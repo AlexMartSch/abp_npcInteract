@@ -1,3 +1,3 @@
 # abp_npcInteract
 
-Support Discord: https://discord.gg/GQA39ee3
+Support Discord: https://discord.gg/NQFSD6t9hQ
