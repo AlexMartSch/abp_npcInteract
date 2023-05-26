@@ -35,6 +35,9 @@ Config.Algorithm_Native_SyncTime = 2 -- In seconds
 
 Config.InteractKey = 38
 
+-- If it is set to 'true' it will be sent only once, which means that you will be able to use notifications that can be activated/deactivated.
+Config.UseCustomInteractionNotification = true
+
 -----------------------
 --- NPC SETTINGS ---
 -----------------------
@@ -46,13 +49,16 @@ Config.NPC = {
         heading = 152.86,
         distanceCheck = 5,
 
+        options = {
+            freeze = true,
+            invincible = true,
+            blockTemporaryEvents = true
+        },
+
         pedOptions = function(ped)
-            SetBlockingOfNonTemporaryEvents(ped, true)
             SetPedDiesWhenInjured(ped, false)
             SetPedCanPlayAmbientAnims(ped, true)
             SetPedCanRagdollFromPlayerImpact(ped, false)
-            SetEntityInvincible(ped, true)
-            FreezeEntityPosition(ped, true)
         end,
 
         onInteract = function(pedHandler)

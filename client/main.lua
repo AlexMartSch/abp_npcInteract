@@ -10,6 +10,8 @@ DeleteNPC = function(npcIndex)
         DeleteEntity(entity)
 
         NPCList[npcIndex].entity = nil
+        NPCList[npcIndex].notified = false
+        OutCustomInteractionNotification()
     end
 end
 
@@ -37,6 +39,20 @@ CreateNPC = function(npcIndex, npcData)
         ped = CreatePed(4, pedModel, npcData.position.x, npcData.position.y, npcData.position.z, npcData.heading, false, false)
         nearNPCIndex = npcIndex
         npcData.pedOptions(ped)
+
+        if npcData.options then
+            if npcData.options.freeze then
+                FreezeEntityPosition(ped, npcData.options.freeze)
+            end
+
+            if npcData.options.invincible then
+                SetEntityInvincible(ped, npcData.options.invincible)
+            end
+
+            if npcData.options.blockTemporaryEvents then
+                SetBlockingOfNonTemporaryEvents(ped, npcData.options.blockTemporaryEvents)
+            end
+        end
 
         SetModelAsNoLongerNeeded(pedModel)
     end
@@ -82,7 +98,8 @@ CreateNPC = function(npcIndex, npcData)
     NPCList[npcIndex] = {
         pedData = npcData,
         entity = ped,
-        zone = createdZone
+        zone = createdZone,
+        notified = false
     }
 
 end
@@ -99,9 +116,22 @@ ThreadNPCInteraction = function(npcData)
             ShowFloatingHelpNotification(npc.name, position)
 
             if distanceFromPed < 2 then
-                ShowHelpNotification("Presiona ~y~E ~w~para interactuar", false, true, 5)
+                if Config.UseCustomInteractionNotification then
+                    if not npcData.notified then
+                        npcData.notified = true
+                        InCustomInteractionNotification(locale("INTERACT"))
+                    end
+                else
+                    ShowHelpNotification(locale("INTERACT"), false, true, 5)
+                end
+                
                 if IsControlJustPressed(0, Config.InteractKey) then
                     npc.onInteract(npcData.entity)
+                    Wait(100)
+                end
+            else
+                if npcData.notified then
+                    npcData.notified = false
                 end
             end
         end
