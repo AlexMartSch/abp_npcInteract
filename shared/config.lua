@@ -38,6 +38,11 @@ Config.InteractKey = 38
 -- If it is set to 'true' it will be sent only once, which means that you will be able to use notifications that can be activated/deactivated.
 Config.UseCustomInteractionNotification = true
 
+-- Use this decor to set the NPC's is a Script Creation.
+-- This maybe helps with other npc scripts.
+-- When NPC using this decor you can make checks that helps if npc can be 'used' for other prorpuses.
+Config.NPCDecor = 'server_npc'
+
 -----------------------
 --- NPC SETTINGS ---
 -----------------------

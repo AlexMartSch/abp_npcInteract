@@ -1,9 +1,27 @@
 local NPCList ={}
 local nearNPCIndex = nil
+local blipList = {}
+local lastCreatedNPCIndex = 0
+local exportedNpcCreated = {}
 
+DecorRegister(Config.NPCDecor, 2)
+
+RemoveBlipFromNPCIndex = function(npcIndex)
+    for blipIndex, blipData in ipairs(blipList) do
+        if blipData.npcIndex == npcIndex then
+            if DoesBlipExist(blipData.blip) then
+                RemoveBlip(blipData.blip)
+                table.remove(blipList, blipIndex)
+                break
+            end
+        end
+    end
+end
 
 DeleteNPC = function(npcIndex)
     local entity = NPCList[npcIndex].entity
+
+    RemoveBlipFromNPCIndex(npcIndex)
 
     if DoesEntityExist(entity) then
         SetEntityAsMissionEntity(entity, false, false)
@@ -15,14 +33,37 @@ DeleteNPC = function(npcIndex)
     end
 end
 
+DestroyZoneId = function(npcIndex)
+    if NPCList[npcIndex] and NPCList[npcIndex].zone then
+        NPCList[npcIndex].zone:remove()
+    end
+end
+
 DeletePreoviousNPC = function()
     for npcIndex, _ in pairs(NPCList) do
+        DestroyZoneId(npcIndex)
         DeleteNPC(npcIndex)
     end
 
     NPCList = {}
 end
 
+CreateBlip = function(position, blipData, npcIndex)
+    local blip = AddBlipForCoord(position)
+    SetBlipSprite(blip, blipData.model)
+    SetBlipDisplay(blip, 4)
+    SetBlipScale(blip, blipData.scale or 0.7)
+    SetBlipColour(blip, blipData.colour)
+    SetBlipAsShortRange(blip, true)
+    BeginTextCommandSetBlipName("STRING")
+    AddTextComponentString(blipData.title)
+    EndTextCommandSetBlipName(blip)
+
+    table.insert(blipList, {
+        blip = blip,
+        npcIndex = npcIndex
+    })
+end
 
 CreateNPC = function(npcIndex, npcData)
     local pedModel = GetHashKey(npcData.model)
@@ -39,6 +80,8 @@ CreateNPC = function(npcIndex, npcData)
         ped = CreatePed(4, pedModel, npcData.position.x, npcData.position.y, npcData.position.z, npcData.heading, false, false)
         nearNPCIndex = npcIndex
         npcData.pedOptions(ped)
+
+        DecorSetBool(ped, Config.NPCDecor, true)
 
         if npcData.options then
             if npcData.options.freeze then
@@ -59,7 +102,7 @@ CreateNPC = function(npcIndex, npcData)
 
     local createdZone = false
 
-    if Config.Algorithm == 'zone' then
+    if Config.Algorithm == 'zone' then 
 
         local onEnter = function(self)
             if not NPCList[self.npcIndex].entity then
@@ -77,7 +120,7 @@ CreateNPC = function(npcIndex, npcData)
         
         local onExit = function(self)
             if NPCList[self.npcIndex].entity then
-                DeleteNPC(self.npcIndex, self.npcData)
+                DeleteNPC(self.npcIndex)
             end
         end
 
@@ -102,6 +145,7 @@ CreateNPC = function(npcIndex, npcData)
         notified = false
     }
 
+    return npcIndex
 end
 
 ThreadNPCInteraction = function(npcData)
@@ -139,10 +183,49 @@ ThreadNPCInteraction = function(npcData)
 end
 
 LoadNPCList = function()
+    lastCreatedNPCIndex = 0
     for npcIndex, npcData in pairs(Config.NPC) do
-        CreateNPC(npcIndex, npcData)
+        LoadNPC(npcIndex, npcData)
+        lastCreatedNPCIndex = lastCreatedNPCIndex + 1
     end
 end
+
+LoadNPC = function(npcIndex, npcData)
+    if type(npcData.position == 'vector3') then
+        if npcData.blip then
+            CreateBlip(npcData.position, npcData.blip, npcIndex)
+        end
+
+        CreateNPC(npcIndex, npcData)
+    else
+        for _, position in ipairs(npcData.position) do
+            if npcData.blip then
+                CreateBlip(position, npcData.blip, npcIndex)
+            end
+    
+            npcData.position = position
+            CreateNPC(npcIndex, npcData)
+        end
+    end
+end
+
+exports('AddNPC', function(npcData)
+    local npcIndex = lastCreatedNPCIndex + 1
+    lastCreatedNPCIndex = npcIndex
+    local invokingResource = GetInvokingResource()
+
+    if not exportedNpcCreated[invokingResource] then
+        exportedNpcCreated[invokingResource] = { npcIndex }
+    else
+        if TableContains(exportedNpcCreated[invokingResource], npcIndex) then
+            return
+        end
+        table.insert(exportedNpcCreated[invokingResource], npcIndex)
+    end
+
+    LoadNPC(npcIndex, npcData)
+    
+end)
 
 CreateNPCThreads = function()
 
@@ -199,5 +282,11 @@ CreateNPCThreads()
 AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then
         DeletePreoviousNPC()
+    elseif exportedNpcCreated[resource] then
+        
+        for _, npcIndex in pairs(exportedNpcCreated[resource]) do
+            DestroyZoneId(npcIndex)
+            DeleteNPC(npcIndex)
+        end
     end
 end)
