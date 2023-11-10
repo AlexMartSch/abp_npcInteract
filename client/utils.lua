@@ -18,3 +18,13 @@ ShowHelpNotification = function(msg, thisFrame, beep, duration)
         EndTextCommandDisplayHelp(0, false, beep, duration or -1)
     end
 end
+
+TableContains = function(t, e)
+	for _, val in pairs(t) do
+		if val == e then
+			return true
+		end
+	end
+
+	return false
+end
